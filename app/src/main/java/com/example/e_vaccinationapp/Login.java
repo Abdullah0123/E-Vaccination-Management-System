@@ -1,9 +1,5 @@
 package com.example.e_vaccinationapp;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
@@ -12,22 +8,20 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -36,17 +30,14 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 public class Login extends AppCompatActivity implements LocationListener {
 
-    private static final int PERMISSION_ID = 44;
     private EditText et_email,et_password;
     private String password, email;
     private String type="";
     private FirebaseAuth fauth;
     private FirebaseFirestore firestore;
-    private  static final String TAG = "Data";
     private String phone_pattern,email_pattern;
     private DocumentReference documentReference;
     private ProgressBar progressBar;
-    private LocationManager locationManager;
     private DatabaseReference mDatabase;
     private static boolean flag;
 
@@ -64,37 +55,52 @@ public class Login extends AppCompatActivity implements LocationListener {
         progressBar = findViewById(R.id.progressBar_login);
 
         startLocationManager();
+        checkSession();
+    }
+
+    private void checkSession() {
+
+        //check if user is logged in
+        //if user is logged in --> move to mainActivity
+
+        SessionManagement sessionManagement = new SessionManagement(Login.this);
+        int userID = sessionManagement.getSession();
+
+        if(userID != -1){
+            //user id logged in and so move to mainActivity
+            moveToMainActivity();
+        }
+        else{
+            //do nothing
+        }
+    }
+
+    private void moveToMainActivity() {
+
+
+        Intent intent = new Intent(Login.this, HW_Dashboard.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 
     private void startLocationManager() {
 
-        if(checkPermissions()) {
-
-            if(isLocationEnabled()) {
-                locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
-                    return;
-                }
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 1, this);
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 1, this);
-                mDatabase = FirebaseDatabase.getInstance().getReference("Realtime_Tracking/Users");
+        if(isLocationEnabled()) {
+            LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
             }
-            else {
-                //Toast.makeText(this, "Please turn on" + " your location...", Toast.LENGTH_LONG).show();
-                //Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                //startActivity(intent);
-            }
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 1, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 1, this);
         }
-        else {
-            requestPermissions();
-        }
+        mDatabase = FirebaseDatabase.getInstance().getReference("Realtime_Tracking/Users");
     }
 
     public void btn_login(View view) {
@@ -222,41 +228,10 @@ public class Login extends AppCompatActivity implements LocationListener {
 
         Toast.makeText(this, "Hello", Toast.LENGTH_SHORT).show();
     }
-    // method to check for permissions
-    private boolean checkPermissions() {
-        return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
 
-        // If we want background location
-        // on Android 10.0 and higher,
-        // use:
-        // ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    }
-
-    // method to request for permissions
-    private void requestPermissions() {
-        ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_ID);
-    }
-
-    // method to check
-    // if location is enabled
     private boolean isLocationEnabled() {
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-    }
-
-    // If everything is alright then
-    @Override
-    public void
-    onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == PERMISSION_ID) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-            }
-        }
     }
 
     @Override
